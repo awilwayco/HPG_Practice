@@ -53,7 +53,7 @@ flags() {
   # Display help message if help flag is set
   if [ "$help_flag" = true ]; then
     echo -e ""
-    echo "Usage: email_storage_alert [options]"
+    echo "Usage: esa [options]"
     echo -e ""
     echo "Description: Email Alert Service for HiPerGator Storage"
     echo -e ""
@@ -77,18 +77,32 @@ flags() {
   # Access the value of the enable flag
   if [ "$enable_flag" = true ]; then
     echo "Enabling email service..."
+    # Add the lines to ~/.bashrc if they don't exist
+    if ! grep -q "# Email Storage Alert Service Enabled" ~/.bashrc; then
+      echo '# Email Storage Alert Service Enabled' >> ~/.bashrc
+      echo 'alias esa=/apps/email_storage_alert/bin/./esa' >> ~/.bashrc
+      echo '( esa & )' >> ~/.bashrc
+    fi
+    exit 0
   fi
 
   # Access the value of the disable flag
   if [ "$disable_flag" = true ]; then
     echo "Disabling email service..."
+    # Remove the lines from ~/.bashrc if they exist
+    if grep -q "# Email Storage Alert Service Enabled" ~/.bashrc; then
+      sed -i '/# Email Storage Alert Service Enabled/d' ~/.bashrc
+      sed -i '/alias esa=\/apps\/email_storage_alert\/bin\/.\/esa/d' ~/.bashrc
+      sed -i '/( esa & )/d' ~/.bashrc
+    fi
+    exit 0
   fi
 }
 
 # Check Flags
 flags "$@"
 
-# Global Variables 
+# Global Variables
 # Storage Critical Checks
 declare -g homeStorageCritical=false
 declare -g blueStorageCritical=false
@@ -178,9 +192,6 @@ calculate_home_percentage() {
 
   # Perform the division and calculate the percentage with two decimal places
   home_percentage=$(awk "BEGIN {printf \"%.2f\", $used_value / $quota_value * 100}")
-  
-  # Testing
-  # home_percentage="90.00"
 
   # Return the percentage value
   if [ "$home_percentage" = "0.00" ]; then
@@ -272,10 +283,6 @@ calculate_blue_percentage() {
     # Calculate percentages
     local blue_group_percentage=$(awk "BEGIN {printf \"%.2f\", $group_used_value / $group_quota_value * 100}")
     local blue_user_percentage=$(awk "BEGIN {printf \"%.2f\", $user_used_value / $group_quota_value * 100}")
-    
-    # Testing
-    # blue_group_percentage="90.00"
-    # blue_user_percentage="50.00"
 
     # Return the percentage values
     if [ "$blue_group_percentage" = "0.00" ]; then
@@ -377,7 +384,7 @@ calculate_orange_percentage() {
     # Calculate percentages
     local orange_group_percentage=$(awk "BEGIN {printf \"%.2f\", $group_used_value / $group_quota_value * 100}")
     local orange_user_percentage=$(awk "BEGIN {printf \"%.2f\", $user_used_value / $group_quota_value * 100}")
-    
+
     # Return the percentage values
     if [ "$orange_group_percentage" = "0.00" ]; then
         echo "\nTotal Used Percentage of Group: <0.01%"
@@ -413,7 +420,7 @@ getUserEmail() {
     username=$(whoami)
     getEntries=$(getentng -u $username)
     getEntriesOutput=$(echo -e "$getEntries")
-    email=$(python extract_email.py "$getEntriesOutput")
+    email=$(python /apps/email_storage_alert/bin/extract_email.py "$getEntriesOutput")
     echo "$email"
 }
 
@@ -469,17 +476,14 @@ fi
 # Total Storage with Messages
 total_storage="$home_message\n$home\n$home_per\n\n$blue_message\n$blue\n$blue_per\n\n$orange_message$orange\n$orange_per"
 
-# Extract User Email
-username=$(whoami 2>/dev/null)
-getEntriesOutput=$(getentng -u $username 2>/dev/null)
-email=$(python extract_email.py $getEntriesOutput 2>/dev/null)
-
 # Email details
 sender="support"
-# recipient=$(echo "$(getUserEmail)")
-# Test
-recipient="awilwayco@ufl.edu"
-subject="HiPerGator Storage at Critical Levels"
+recipient=$(echo "$(getUserEmail)")
+if [ "$send_flag" = true ] && [ "$homeStorageCritical" = false ] && [ "$blueStorageCritical" = false ] && [ "$orangeStorageCritical" = false ]; then
+    subject="HiPerGator Storage at Noncritical Levels"
+else
+    subject="HiPerGator Storage at Critical Levels"
+fi
 body=$(printf "<pre>%s</pre>" "$total_storage")
 
 # Send the email if any storage levels critical

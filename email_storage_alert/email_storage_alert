@@ -53,7 +53,7 @@ flags() {
   # Display help message if help flag is set
   if [ "$help_flag" = true ]; then
     echo -e ""
-    echo "Usage: email_storage_alert [options]"
+    echo "Usage: esa [options]"
     echo -e ""
     echo "Description: Email Alert Service for HiPerGator Storage"
     echo -e ""
@@ -77,11 +77,21 @@ flags() {
   # Access the value of the enable flag
   if [ "$enable_flag" = true ]; then
     echo "Enabling email service..."
+    # Add the line to ~/.bashrc if it doesn't exist
+    if ! grep -q "/apps/email_storage_alert/bin/./esa" ~/.bashrc; then
+        echo '/apps/email_storage_alert/bin/./esa' >> ~/.bashrc
+    fi
+    exit 0
   fi
 
   # Access the value of the disable flag
   if [ "$disable_flag" = true ]; then
     echo "Disabling email service..."
+    # Remove the line from ~/.bashrc if it exists
+    if grep -q "/apps/email_storage_alert/bin/./esa" ~/.bashrc; then
+        sed -i '/\/apps\/email_storage_alert\/bin\/.\/esa/d' ~/.bashrc
+    fi
+    exit 0
   fi
 }
 
@@ -468,11 +478,6 @@ fi
 
 # Total Storage with Messages
 total_storage="$home_message\n$home\n$home_per\n\n$blue_message\n$blue\n$blue_per\n\n$orange_message$orange\n$orange_per"
-
-# Extract User Email
-username=$(whoami 2>/dev/null)
-getEntriesOutput=$(getentng -u $username 2>/dev/null)
-email=$(python extract_email.py $getEntriesOutput 2>/dev/null)
 
 # Email details
 sender="support"
