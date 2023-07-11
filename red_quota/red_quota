@@ -1,0 +1,11 @@
+#!/bin/bash
+SCRIPT_PATH=${BASH_SOURCE[0]}
+SCRIPT_NAME=$(basename ${SCRIPT_PATH})
+DIR=$(readlink -f "$(dirname ${SCRIPT_PATH})")
+if [[ "x${RCDIR}" == "x" ]]; then
+    export RCDIR=$(readlink -f ${DIR}/..)
+fi
+source "${RCDIR}/etc/env.sh"
+source "${RCDIR}/etc/db_public_read.sh"
+
+python3 ${DIR}/${SCRIPT_NAME}.py "$@"
